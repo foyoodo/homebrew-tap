@@ -24,8 +24,9 @@ jobs:
           HOMEBREW_NO_ANALYTICS: "1"
         run: |
           set -euo pipefail
-          brew style Casks/cove.rb
-          brew audit --cask Casks/cove.rb
+          brew tap foyoodo/tap "$GITHUB_WORKSPACE"
+          brew style "$(brew --repository foyoodo/tap)/Casks/cove.rb"
+          brew audit --cask --strict --online foyoodo/tap/cove
 
   install:
     name: Install smoke test
@@ -49,7 +50,8 @@ jobs:
           HOMEBREW_NO_ANALYTICS: "1"
         run: |
           set -euo pipefail
-          brew install --cask --appdir=/Applications ./Casks/cove.rb
+          brew tap foyoodo/tap "$GITHUB_WORKSPACE"
+          brew install --cask --appdir=/Applications foyoodo/tap/cove
           app="/Applications/Cove.app"
           test -d "${app}"
           test -x "${app}/Contents/MacOS/Cove"

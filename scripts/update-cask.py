@@ -26,8 +26,10 @@ CASK_PATH = Path(__file__).resolve().parent.parent / "Casks" / "cove.rb"
 API = "https://api.github.com"
 USER_AGENT = "foyoodo-homebrew-tap"
 
-VERSION_RE = re.compile(r'^  version "([^"]+)"\s*$', re.M)
-SHA_RE = re.compile(r'^  sha256 "([0-9a-fA-F]{64})"\s*$', re.M)
+# Do not use \s here. It matches newlines and would delete the blank line
+# brew style requires between the sha256 stanza and the url stanza.
+VERSION_RE = re.compile(r'^(  version ")([^"]+)(")[ \t]*$', re.M)
+SHA_RE = re.compile(r'^(  sha256 ")([0-9a-fA-F]{64})(")[ \t]*$', re.M)
 SHA256_RE = re.compile(r"(?i)(?<![0-9a-f])([0-9a-f]{64})(?![0-9a-f])")
 
 
@@ -165,15 +167,15 @@ def read_cask(text: str) -> tuple[str, str]:
     sha = SHA_RE.search(text)
     if not version or not sha:
         raise SystemExit(f"could not parse version and sha256 in {CASK_PATH}")
-    return version.group(1), sha.group(1).lower()
+    return version.group(2), sha.group(2).lower()
 
 
 def write_cask(text: str, version: str, sha256: str) -> str:
     def repl_version(match: re.Match[str]) -> str:
-        return f'  version "{version}"'
+        return f"{match.group(1)}{version}{match.group(3)}"
 
     def repl_sha(match: re.Match[str]) -> str:
-        return f'  sha256 "{sha256}"'
+        return f"{match.group(1)}{sha256}{match.group(3)}"
 
     updated, version_count = VERSION_RE.subn(repl_version, text, count=1)
     updated, sha_count = SHA_RE.subn(repl_sha, updated, count=1)

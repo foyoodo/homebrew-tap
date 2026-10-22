@@ -1,6 +1,7 @@
 cask "cove" do
   version "0.7.0-rc.3"
   sha256 "90e6b847d7acfca0c3dd2253f3a9bb9efd04b7f2b66909c81b83f24ecfefed0b"
+
   url "https://github.com/foyoodo/Cove/releases/download/v#{version}/Cove-#{version}-darwin-arm64.zip"
   name "Cove"
   desc "Native chat client for OpenAI-compatible models"
@@ -16,12 +17,12 @@ cask "cove" do
 
   app "Cove.app"
 
-  # The app is unsigned. Homebrew quarantines the download, which makes
-  # Gatekeeper refuse to launch it. Clear that attribute after the .app
-  # is in place.
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-dr", "com.apple.quarantine", "#{appdir}/Cove.app"]
+  # Unsigned builds stay quarantined, so Gatekeeper refuses to open them.
+  postflight_steps do
+    on_macos do
+      run "/usr/bin/xattr",
+          args: ["-dr", "com.apple.quarantine", "{{appdir}}/Cove.app"]
+    end
   end
 
   uninstall quit: "dev.cove.chat"
