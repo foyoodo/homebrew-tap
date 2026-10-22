@@ -1,0 +1,47 @@
+name: Update Cove cask
+
+on:
+  schedule:
+    # Hourly. The job commits only when the selected release changed.
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-cove-cask
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update cask
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          token: ${{ github.token }}
+
+      - name: Select the Cove release and update the cask
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 scripts/update-cask.py
+
+      - name: Commit and push when the cask changed
+        run: |
+          set -euo pipefail
+          git add Casks/cove.rb
+          if git diff --cached --quiet; then
+            echo "Cask already matches the selected release. No commit."
+            exit 0
+          fi
+          version="$(sed -n 's/^  version "\(.*\)"/\1/p' Casks/cove.rb)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update cove cask to ${version}"
+          git push origin HEAD:main

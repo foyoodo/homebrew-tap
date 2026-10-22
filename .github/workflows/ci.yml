@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: brew style and audit
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Style and audit the cask
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_ENV_HINTS: "1"
+          HOMEBREW_NO_ANALYTICS: "1"
+        run: |
+          set -euo pipefail
+          brew style Casks/cove.rb
+          brew audit --cask Casks/cove.rb
+
+  install:
+    name: Install smoke test
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Require an Apple Silicon runner
+        run: |
+          set -euo pipefail
+          arch="$(uname -m)"
+          echo "uname -m=${arch}"
+          test "${arch}" = "arm64"
+
+      - name: Install the cask and check quarantine
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_ENV_HINTS: "1"
+          HOMEBREW_NO_ANALYTICS: "1"
+        run: |
+          set -euo pipefail
+          brew install --cask --appdir=/Applications ./Casks/cove.rb
+          app="/Applications/Cove.app"
+          test -d "${app}"
+          test -x "${app}/Contents/MacOS/Cove"
+          echo "Installed ${app}"
+          file "${app}/Contents/MacOS/Cove"
+          attrs="$(xattr -r "${app}" || true)"
+          printf '%s\n' "${attrs}"
+          if printf '%s\n' "${attrs}" | grep -q 'com.apple.quarantine'; then
+            echo "com.apple.quarantine is still set on ${app}"
+            exit 1
+          fi
+          echo "No quarantine attribute on ${app}"
