@@ -29,7 +29,28 @@ jobs:
           set -euo pipefail
           brew tap foyoodo/tap "$GITHUB_WORKSPACE"
           brew style "$(brew --repository foyoodo/tap)/Casks/cove.rb"
-          brew audit --cask --strict --online foyoodo/tap/cove
+
+          set +e
+          audit_output="$(brew audit --cask --strict --online foyoodo/tap/cove 2>&1)"
+          audit_status=$?
+          set -e
+          printf '%s\n' "${audit_output}"
+          if [[ "${audit_status}" -eq 0 ]]; then
+            exit 0
+          fi
+
+          # github_latest calls /releases/latest. That endpoint is 404 until Cove
+          # publishes a stable release, and brew audit turns the 404 into an
+          # exception that hides every later check. Tolerate only that failure,
+          # then run the rest of the strict online audit.
+          problems="$(printf '%s\n' "${audit_output}" | grep -E '^[[:space:]]+\*' || true)"
+          other="$(printf '%s\n' "${problems}" | grep -v 'HTTPNotFoundError' || true)"
+          if [[ -z "${problems}" || -n "${other}" ]]; then
+            echo "brew audit failed."
+            exit 1
+          fi
+          echo "No stable Cove release yet. Repeating audit without the livecheck version check."
+          brew audit --cask --strict --online --except=livecheck_version foyoodo/tap/cove
 
   install:
     name: Install smoke test
