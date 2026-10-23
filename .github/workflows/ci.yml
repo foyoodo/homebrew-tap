@@ -28,6 +28,8 @@ jobs:
         run: |
           set -euo pipefail
           brew tap foyoodo/tap "$GITHUB_WORKSPACE"
+          # Homebrew 6+ will not load an untrusted third-party tap.
+          brew trust --cask foyoodo/tap/cove
           brew style "$(brew --repository foyoodo/tap)/Casks/cove.rb"
 
           set +e
@@ -76,6 +78,9 @@ jobs:
         run: |
           set -euo pipefail
           brew tap foyoodo/tap "$GITHUB_WORKSPACE"
+          # Fully qualified install also trusts the cask; trust first so a
+          # short-name lookup cannot fail if brew loads the tap early.
+          brew trust --cask foyoodo/tap/cove
           brew install --cask --appdir=/Applications foyoodo/tap/cove
           app="/Applications/Cove.app"
           test -d "${app}"

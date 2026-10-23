@@ -6,8 +6,16 @@ Cove ships an Apple Silicon (`arm64`) build only. It is not code-signed or notar
 
 ## Install
 
+Homebrew 6 and newer does not load a third-party tap until you trust it. The fully qualified install trusts only this cask:
+
 ```sh
-brew tap foyoodo/tap && brew install --cask cove
+brew install --cask foyoodo/tap/cove
+```
+
+To tap the repository and install by the short name, trust the cask first:
+
+```sh
+brew tap foyoodo/tap && brew trust --cask foyoodo/tap/cove && brew install --cask cove
 ```
 
 ## Upgrade
@@ -39,6 +47,12 @@ brew uninstall --cask --zap cove
 - `~/Library/Saved Application State/dev.cove.chat.savedState`
 
 API keys stay in the macOS login keychain under the service name `dev.cove.chat`. `--zap` does not delete keychain items. To remove the keys, open Keychain Access and delete the generic passwords for that service.
+
+To drop trust for this cask:
+
+```sh
+brew untrust --cask foyoodo/tap/cove
+```
 
 To stop using this tap:
 
