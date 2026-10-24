@@ -17,45 +17,70 @@ jobs:
       - name: Check out
         uses: actions/checkout@v7
 
-      - name: Style and audit the cask
+      - name: Style and audit the casks
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_ENV_HINTS: "1"
           HOMEBREW_NO_ANALYTICS: "1"
           # Shared runner IPs exhaust the unauthenticated GitHub API limit
-          # while audit checks the Cove release. The workflow token is enough.
+          # while audit checks GitHub releases. The workflow token is enough.
           HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           brew tap foyoodo/tap "$GITHUB_WORKSPACE"
+          repo="$(brew --repository foyoodo/tap)"
+
+          audit_online() {
+            local token="$1"
+            set +e
+            audit_output="$(brew audit --cask --strict --online "foyoodo/tap/${token}" 2>&1)"
+            audit_status=$?
+            set -e
+            printf '%s\n' "${audit_output}"
+            if [[ "${audit_status}" -eq 0 ]]; then
+              return 0
+            fi
+
+            # github_latest calls /releases/latest. That endpoint is 404 until a
+            # stable release exists, and brew audit turns the 404 into an
+            # exception that hides every later check. Tolerate only that failure,
+            # then run the rest of the strict online audit.
+            problems="$(printf '%s\n' "${audit_output}" | grep -E '^[[:space:]]+\*' || true)"
+            other="$(printf '%s\n' "${problems}" | grep -v 'HTTPNotFoundError' || true)"
+            if [[ -z "${problems}" || -n "${other}" ]]; then
+              echo "brew audit failed for ${token}."
+              return 1
+            fi
+            echo "No stable ${token} release yet. Repeating audit without the livecheck version check."
+            brew audit --cask --strict --online --except=livecheck_version "foyoodo/tap/${token}"
+          }
+
+          release_has_asset() {
+            local github_repo="$1"
+            local tag="$2"
+            local asset="$3"
+            gh api "repos/${github_repo}/releases/tags/${tag}" \
+              --jq '.assets[].name' 2>/dev/null | grep -qx "${asset}"
+          }
+
           # Homebrew 6+ will not load an untrusted third-party tap.
           brew trust --cask foyoodo/tap/cove
-          brew style "$(brew --repository foyoodo/tap)/Casks/cove.rb"
+          brew trust --cask foyoodo/tap/audiotag
+          brew style "${repo}/Casks/cove.rb" "${repo}/Casks/audiotag.rb"
 
-          set +e
-          audit_output="$(brew audit --cask --strict --online foyoodo/tap/cove 2>&1)"
-          audit_status=$?
-          set -e
-          printf '%s\n' "${audit_output}"
-          if [[ "${audit_status}" -eq 0 ]]; then
-            exit 0
+          audit_online cove
+
+          audiotag_version="$(sed -n 's/^  version "\(.*\)"/\1/p' "${repo}/Casks/audiotag.rb" | head -1)"
+          if release_has_asset foyoodo/AudioTag "v${audiotag_version}" "AudioTag-arm64.zip"; then
+            audit_online audiotag
+          else
+            echo "No AudioTag GitHub Release asset for v${audiotag_version}; auditing offline."
+            brew audit --cask --strict foyoodo/tap/audiotag
           fi
 
-          # github_latest calls /releases/latest. That endpoint is 404 until Cove
-          # publishes a stable release, and brew audit turns the 404 into an
-          # exception that hides every later check. Tolerate only that failure,
-          # then run the rest of the strict online audit.
-          problems="$(printf '%s\n' "${audit_output}" | grep -E '^[[:space:]]+\*' || true)"
-          other="$(printf '%s\n' "${problems}" | grep -v 'HTTPNotFoundError' || true)"
-          if [[ -z "${problems}" || -n "${other}" ]]; then
-            echo "brew audit failed."
-            exit 1
-          fi
-          echo "No stable Cove release yet. Repeating audit without the livecheck version check."
-          brew audit --cask --strict --online --except=livecheck_version foyoodo/tap/cove
-
-  install:
-    name: Install smoke test
+  install-cove:
+    name: Install Cove smoke test
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
@@ -87,6 +112,55 @@ jobs:
           test -x "${app}/Contents/MacOS/Cove"
           echo "Installed ${app}"
           file "${app}/Contents/MacOS/Cove"
+          attrs="$(xattr -r "${app}" || true)"
+          printf '%s\n' "${attrs}"
+          if printf '%s\n' "${attrs}" | grep -q 'com.apple.quarantine'; then
+            echo "com.apple.quarantine is still set on ${app}"
+            exit 1
+          fi
+          echo "No quarantine attribute on ${app}"
+
+  install-audiotag:
+    name: Install AudioTag smoke test
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Require an Apple Silicon runner
+        run: |
+          set -euo pipefail
+          arch="$(uname -m)"
+          echo "uname -m=${arch}"
+          test "${arch}" = "arm64"
+
+      - name: Install the cask and check quarantine
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_ENV_HINTS: "1"
+          HOMEBREW_NO_ANALYTICS: "1"
+          HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          brew tap foyoodo/tap "$GITHUB_WORKSPACE"
+          brew trust --cask foyoodo/tap/audiotag
+
+          repo="$(brew --repository foyoodo/tap)"
+          version="$(sed -n 's/^  version "\(.*\)"/\1/p' "${repo}/Casks/audiotag.rb" | head -1)"
+          if ! gh api "repos/foyoodo/AudioTag/releases/tags/v${version}" \
+              --jq '.assets[].name' 2>/dev/null | grep -qx 'AudioTag-arm64.zip'; then
+            echo "No AudioTag-arm64.zip on GitHub Release v${version}; skipping install."
+            exit 0
+          fi
+
+          brew install --cask --appdir=/Applications foyoodo/tap/audiotag
+          app="/Applications/AudioTag.app"
+          test -d "${app}"
+          test -x "${app}/Contents/MacOS/AudioTag"
+          echo "Installed ${app}"
+          file "${app}/Contents/MacOS/AudioTag"
           attrs="$(xattr -r "${app}" || true)"
           printf '%s\n' "${attrs}"
           if printf '%s\n' "${attrs}" | grep -q 'com.apple.quarantine'; then

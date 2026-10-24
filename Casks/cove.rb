@@ -39,5 +39,8 @@ cask "cove" do
     Cove is not code-signed or notarized, and it runs only on Apple Silicon.
     This cask removes the quarantine attribute so Gatekeeper does not block
     the app. macOS may still say the developer cannot be verified.
+    Homebrew no longer supports --no-quarantine. If the app is installed
+    in ~/Applications, run:
+      xattr -dr com.apple.quarantine ~/Applications/Cove.app
   EOS
 end
