@@ -69,8 +69,8 @@ CASKS = [
     CaskSpec(
         token="audiotag",
         repo="foyoodo/AudioTag",
-        arm_zip="AudioTag-arm64.zip",
-        intel_zip="AudioTag-universal.zip",
+        arm_zip="AudioTag-{version}-arm64.zip",
+        intel_zip="AudioTag-{version}-universal.zip",
         sha256_asset=False,
         required=False,
     ),

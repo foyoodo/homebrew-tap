@@ -1,10 +1,10 @@
 cask "audiotag" do
   arch arm: "arm64", intel: "universal"
 
-  version "0.0.0"
+  version "0.1.0"
   sha256 :no_check
 
-  url "https://github.com/foyoodo/AudioTag/releases/download/v#{version}/AudioTag-#{arch}.zip"
+  url "https://github.com/foyoodo/AudioTag/releases/download/v#{version}/AudioTag-#{version}-#{arch}.zip"
   name "AudioTag"
   desc "Audio metadata editor powered by TagLib"
   homepage "https://github.com/foyoodo/AudioTag"

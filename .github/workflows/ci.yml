@@ -72,7 +72,7 @@ jobs:
           audit_online cove
 
           audiotag_version="$(sed -n 's/^  version "\(.*\)"/\1/p' "${repo}/Casks/audiotag.rb" | head -1)"
-          if release_has_asset foyoodo/AudioTag "v${audiotag_version}" "AudioTag-arm64.zip"; then
+          if release_has_asset foyoodo/AudioTag "v${audiotag_version}" "AudioTag-${audiotag_version}-arm64.zip"; then
             audit_online audiotag
           else
             echo "No AudioTag GitHub Release asset for v${audiotag_version}; auditing offline."
@@ -150,8 +150,8 @@ jobs:
           repo="$(brew --repository foyoodo/tap)"
           version="$(sed -n 's/^  version "\(.*\)"/\1/p' "${repo}/Casks/audiotag.rb" | head -1)"
           if ! gh api "repos/foyoodo/AudioTag/releases/tags/v${version}" \
-              --jq '.assets[].name' 2>/dev/null | grep -qx 'AudioTag-arm64.zip'; then
-            echo "No AudioTag-arm64.zip on GitHub Release v${version}; skipping install."
+              --jq '.assets[].name' 2>/dev/null | grep -qx "AudioTag-${version}-arm64.zip"; then
+            echo "No AudioTag-${version}-arm64.zip on GitHub Release v${version}; skipping install."
             exit 0
           fi
 
