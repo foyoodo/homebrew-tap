@@ -1,6 +1,6 @@
 cask "cove" do
-  version "0.7.0-rc.3"
-  sha256 "90e6b847d7acfca0c3dd2253f3a9bb9efd04b7f2b66909c81b83f24ecfefed0b"
+  version "0.7.0-rc.5"
+  sha256 "7ec7c4e35a3ad4cd7963fd9a441b2b7d8a1b9feed7ad40f5dac45c88095021b2"
 
   url "https://github.com/foyoodo/Cove/releases/download/v#{version}/Cove-#{version}-darwin-arm64.zip"
   name "Cove"
