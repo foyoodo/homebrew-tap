@@ -2,7 +2,8 @@ cask "audiotag" do
   arch arm: "arm64", intel: "universal"
 
   version "0.1.0"
-  sha256 :no_check
+  sha256 arm:   "d798f86ffaefb5a0d7cd8f8f4e8eaac54141757b2acba779c7bee952fa356950",
+         intel: "a1fa74171bc5d177135e9d8670c78453c2729910ab27b32face902614d18bc85"
 
   url "https://github.com/foyoodo/AudioTag/releases/download/v#{version}/AudioTag-#{version}-#{arch}.zip"
   name "AudioTag"
